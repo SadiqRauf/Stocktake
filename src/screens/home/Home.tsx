@@ -3,16 +3,15 @@ import React, { FC } from "react";
 import { Screen } from "../../layout/Screen";
 import { colors } from "../../utils/theme";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 
-const Home: FC = () => {
+const Home: FC = ({navigation}) => {
   return (
     <Screen TopAreaColor={colors.primary} BottomAreaColor={colors.primary + 50}>
       <View style={styles.header}>
         <Text style={styles.headerText}>DASHBOARD</Text>
       </View>
       <View style={{ padding: 12, flex: 1 }}>
-        <View style={styles.card}>
+        <TouchableOpacity onPress={()=>navigation.navigate("Stucktake")} style={styles.card}>
           <View style={{ height: 48, width: "100%" }}>
             <Image
               source={require("../../assets/icons/track.png")}
@@ -21,7 +20,7 @@ const Home: FC = () => {
             />
           </View>
           <Text style={styles.cardText}>Continue Stocktake</Text>
-        </View>
+        </TouchableOpacity>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 13 }}>
           <View style={styles.iconCard}>
             <MaterialCommunityIcons name="email-outline" color={colors.white} size={40} />
@@ -118,8 +117,8 @@ const styles = StyleSheet.create({
   cardText: {
     color: colors.white,
     fontFamily:'Inter-SemiBold',
-    fontSize:16,
     lineHeight:18,
+    fontSize:16,
     marginTop:5
   },
   text: {
