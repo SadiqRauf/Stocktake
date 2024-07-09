@@ -1,9 +1,9 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { FC, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { colors } from "../utils/theme";
+import { StyleSheet } from "react-native";
 import Home from "../screens/home/Home";
-import StuckTake from "../screens/stucktake/Stucktake";
+import StockTake from "../screens/stocktake/Stocktake";
+import { colors } from "../utils/theme";
+import ViewAllStock from "../screens/view/ViewAllStock";
 
 
 const Stack = createNativeStackNavigator();
@@ -20,7 +20,12 @@ const AppNavigation: React.FC = () => {
       />
       <Stack.Screen
         name="Stucktake"
-        component={StuckTake}
+        component={StockTake}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ViewAllStock"
+        component={ViewAllStock}
         options={{ headerShown: false }}
       />
    

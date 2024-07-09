@@ -1,16 +1,12 @@
 import React from "react";
-import type { PropsWithChildren } from "react";
 import {
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   View,
-  useColorScheme,
+  useColorScheme
 } from "react-native";
 
-import { Colors } from "react-native/Libraries/NewAppScreen";
-import Home from "./src/screens/home/Home";
 import { NavigationContainer } from "@react-navigation/native";
+import { PaperProvider } from "react-native-paper";
 import AppNavigation from "./src/navigation/Navigations";
 
 function App(): JSX.Element {
@@ -21,16 +17,13 @@ function App(): JSX.Element {
   };
 
   return (
-    <NavigationContainer>
-      <View style={backgroundStyle}>
-        <StatusBar
-          barStyle={"light-content"}
-          // backgroundColor={backgroundStyle.backgroundColor}
-        />
-
-        <AppNavigation />
-      </View>
-    </NavigationContainer>
+    <PaperProvider>
+      <NavigationContainer>
+        <View style={backgroundStyle}>
+          <AppNavigation />
+        </View>
+      </NavigationContainer>
+    </PaperProvider>
   );
 }
 
