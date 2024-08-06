@@ -1,18 +1,110 @@
-import React, { FC } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import Papa from "papaparse";
+import React, { FC, useState } from "react";
 import {
+  Text,
+  View,
   Image,
   StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View
+  PermissionsAndroid,
 } from "react-native";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import RNFS from "react-native-fs";
+import Share from "react-native-share";
 import Card from "../../components/Card";
 import Layout from "../../layout/Layout";
 import { colors } from "../../utils/theme";
+import AsyncStorageService from "../../services/AsyncStorageService";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 const Home: FC<any> = ({ navigation }) => {
+const [data, setData] = useState([])
+  useFocusEffect(
+    React.useCallback(() => {
+      AsyncStorageService.getItem("ITEMS").then((data) => {
+        if (data?.value?.length !== undefined) {
+          
+          setData(data?.value);
+        }
+      });
+    }, [navigation])
+  );
+
+  const requestStoragePermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: "Storage Permission",
+          message: "This app needs access to your storage to save files.",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "OK",
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  };
+
+  const createAndSaveCSV = async () => {
+
+    // if (Platform.OS === 'android' && !(await requestStoragePermission())) {
+      await requestStoragePermission();
+    //   Alert.alert("Permission Denied", "Storage permission is required to save files.");
+    //   return;
+    // }
+
+    try {
+      const formattedData = data?.map((row: any[]) => [
+        row[0],            
+        `'${row[1]}`,       
+        row[2],             
+        `'${row[3]}`,           
+        row[4],           
+      ]);
+  
+      const csv = Papa.unparse({
+        fields: ["Location", "Barcode", "Quantity", "Date", "Time"],
+        data: formattedData,
+      }, {
+        delimiter: ",",  
+        header: true,   
+        quotes: true     
+      });
+
+      // const csv = Papa.unparse({
+      //   fields: ["Location", "Barcode", "Quantity", "Date", "Time"],
+      //   data: data,
+      // },
+      // {
+      //   delimiter: " ",
+      //   header: true,      // Include headers
+      //   quotes: true       // Enclose fields in quotes
+      // }
+    // );
+
+      const path = `${RNFS.DocumentDirectoryPath}/data.csv`;
+      await RNFS.writeFile(path, csv, "utf8");
+      console.log("CSV file saved at:", path);
+
+      await Share.open({
+        url: `file://${path}`,
+        type: "text/csv",
+        filename: "data.csv",
+      });
+    } catch (error) {
+      if (error?.message === "User did not share") {
+        console.log("User cancelled the sharing dialog.");
+      } else {
+        console.error("Error creating and saving CSV file:", error);
+      }
+    }
+  };
+
   return (
     <Layout style={{ flex: 1 }}>
       <StatusBar
@@ -53,12 +145,17 @@ const Home: FC<any> = ({ navigation }) => {
           }}
         >
           <Card style={styles.iconCard}>
-            <MaterialCommunityIcons
-              name="email-outline"
-              color={colors.white}
-              size={40}
-            />
-            <Text style={styles.text}>Email</Text>
+            <TouchableOpacity
+              style={styles.press}
+              onPress={() => {}}
+            >
+              <MaterialCommunityIcons
+                name="email-outline"
+                color={colors.white}
+                size={40}
+              />
+              <Text style={styles.text}>Email</Text>
+            </TouchableOpacity>
           </Card>
           <Card style={styles.iconCard}>
             <TouchableOpacity
@@ -94,12 +191,17 @@ const Home: FC<any> = ({ navigation }) => {
             <Text style={styles.text}>Email Setting</Text>
           </Card>
           <Card style={styles.iconCard}>
+          <TouchableOpacity
+              style={styles.press}
+              onPress={() => createAndSaveCSV()}
+            >
             <MaterialCommunityIcons
               name="share-variant-outline"
               color={colors.white}
               size={38}
             />
             <Text style={styles.text}>Share</Text>
+            </TouchableOpacity>
           </Card>
         </View>
         <View style={styles.bottomButtonsContainer}>
@@ -222,10 +324,10 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
   },
-  press:{
+  press: {
     height: "100%",
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
-  }
+  },
 });

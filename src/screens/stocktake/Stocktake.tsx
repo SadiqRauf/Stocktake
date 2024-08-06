@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   StatusBar,
+  Alert,
 } from "react-native";
 import React, { FC, useEffect, useState } from "react";
 import { Screen } from "../../layout/Screen";
@@ -20,6 +21,9 @@ import moment from "moment";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorageService from "../../services/AsyncStorageService";
 import Header from "../../components/Header";
+import ActionButtons from "../../components/ActionsButton";
+import { Controller, useForm } from "react-hook-form";
+import Scanner from "../../components/Scanner";
 const StockTake: FC<any> = ({ navigation }) => {
   const [location, setLocation] = useState<string>("");
   const [itemNo, setItemNo] = useState<string>("");
@@ -28,6 +32,21 @@ const StockTake: FC<any> = ({ navigation }) => {
   const [items, setItems] = useState<any>([]);
   const [id, setId] = useState(0);
   const [scanning, setScanning] = React.useState(false);
+  const [selectedRow, setSelectedRow] = useState(-1);
+  const [bin , setBin] = useState(false)
+  const [isVisible, setIsVisible] = useState<boolean>(false)
+  const onClose =()=> setIsVisible(false)
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      location: "",
+      itemNo: "",
+    },
+  });
 
   const [state] = useState({
     tableHead: ["Location", "Barcode", "Quantity", "Date", "Time"],
@@ -44,22 +63,29 @@ const StockTake: FC<any> = ({ navigation }) => {
   useEffect(() => {
     setScanned(false);
   }, [scanned]);
-  const tableData = [...items.reverse()];
-  const saveItem = () => {
+  const tableData = [...items];
+  const saveItem = (data:any) => {
     const Item = [
-      location,
-      itemNo,
+      data?.location,
+      data?.itemNo,
       quantity,
       moment().format("DD-MM-YYYY"),
       moment().format("HH:mm A"),
     ];
-
-    setItems([...tableData, Item]);
+    tableData.unshift(Item);
+    setItems(tableData);
     AsyncStorageService.setItem("ITEMS", {
-      value: [...tableData, Item],
+      value: tableData,
     });
   };
 
+  const DeleteRow = () => {
+    const newData = tableData?.filter((_, i) => i !== selectedRow);
+    setItems(newData);
+    AsyncStorageService.setItem("ITEMS", {
+      value: newData,
+    });
+  };
   useFocusEffect(
     React.useCallback(() => {
       AsyncStorageService.getItem("ITEMS").then((data) => {
@@ -78,37 +104,71 @@ const StockTake: FC<any> = ({ navigation }) => {
       <View style={styles.mainContainer}>
         <Text style={{ ...styles.label }}>Enter Location/Bin or Ref.No</Text>
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            value={location}
-            style={styles.input}
-            onChangeText={(text) => setLocation(text)}
-          />
-          <TouchableOpacity style={styles.scanner}>
-            <MaterialCommunityIcons
-              name="barcode-scan"
-              color={colors.white}
-              size={25}
-            />
-          </TouchableOpacity>
-        </View>
+        <Controller
+          control={control}
+          rules={{
+            required: true,
+          }}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+              />
+              <TouchableOpacity onPress={()=>{
+                setBin(true)
+                setIsVisible(true)}} style={styles.scanner}>
+                <MaterialCommunityIcons
+                  name="barcode-scan"
+                  color={colors.white}
+                  size={25}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+          name="location"
+        />
+        {errors.location && (
+          <Text style={styles.fieldError}>Location/BIN orRef is required.</Text>
+        )}
+
         <Text style={{ ...styles.label, marginTop: 20 }}>
           Enter Item Number or Barcode
         </Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            value={itemNo}
-            style={styles.input}
-            onChangeText={(text) => setItemNo(text)}
-          />
-          <TouchableOpacity style={styles.scanner}>
-            <MaterialCommunityIcons
-              name="barcode-scan"
-              color={colors.white}
-              size={25}
-            />
-          </TouchableOpacity>
-        </View>
+
+        <Controller
+          control={control}
+          rules={{
+            required: true,
+          }}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.inputContainer}>
+              <TextInput
+                value={value}
+                style={styles.input}
+                onBlur={onBlur}
+                onChangeText={onChange}
+              />
+              <TouchableOpacity onPress={()=>{
+                setBin(false)
+                setIsVisible(true)}} style={styles.scanner}>
+                <MaterialCommunityIcons
+                  name="barcode-scan"
+                  color={colors.white}
+                  size={25}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+          name="itemNo"
+        />
+        {errors.itemNo && (
+          <Text style={styles.fieldError}>
+            Item Number or Barcode is required.
+          </Text>
+        )}
 
         <View style={{ flexDirection: "row", marginTop: 20 }}>
           <View style={{ flex: 0.8, paddingRight: 10 }}>
@@ -155,12 +215,7 @@ const StockTake: FC<any> = ({ navigation }) => {
               </TouchableOpacity>
               <TextInput
                 value={JSON.stringify(quantity)}
-                style={{
-                  fontFamily: "Inter-SemiBold",
-                  fontSize: 16,
-                  color: colors.black,
-                  marginVertical: 12,
-                }}
+                style={styles.counter}
                 keyboardType="numeric"
                 onChangeText={(text) => {
                   const numericValue = parseFloat(text); // or parseInt(text) if you want integers only
@@ -180,13 +235,20 @@ const StockTake: FC<any> = ({ navigation }) => {
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={saveItem}>
+        <TouchableOpacity onPress={handleSubmit(saveItem)}>
           <Layout style={styles.btnView}>
             <Text style={styles.btnText}>Save</Text>
           </Layout>
         </TouchableOpacity>
-
-        <ScrollView horizontal={true} style={{ marginTop: 20 }}>
+        <ActionButtons
+          navigation={navigation}
+          deleteRow={() =>
+            selectedRow > 0
+              ? DeleteRow()
+              : Alert.alert("Warning!", "Please select a row ")
+          }
+        />
+        <ScrollView horizontal={true} style={{}}>
           {tableData?.length > 0 && (
             <View>
               <Table
@@ -208,24 +270,49 @@ const StockTake: FC<any> = ({ navigation }) => {
                 >
                   {/* <Rows data={items} widthArr={state?.widthArr} style={styles.row} textStyle={styles.text}/> */}
                   {tableData?.length > 0 &&
-                    tableData?.slice(0, 5)?.map((rowData, index) => (
-                      <Row
-                        key={index}
-                        data={rowData}
-                        widthArr={state?.widthArr}
-                        style={[
-                          styles.row,
-                          index % 2 && { backgroundColor: colors.primary + 40 },
-                        ]}
-                        textStyle={styles.text}
-                      />
-                    ))}
+                    tableData?.slice(0, 5)?.map((rowData, index) => {
+                      const selected = selectedRow === index;
+                      return (
+                        <Row
+                          key={index}
+                          data={rowData}
+                          widthArr={state?.widthArr}
+                          style={[
+                            styles.row,
+
+                            {
+                              backgroundColor: selected
+                                ? colors.primaryBlue
+                                : colors.primary + 40,
+                            },
+                          ]}
+                          textStyle={{
+                            ...styles.text,
+                            color: selected ? colors.white : colors.black,
+                          }}
+                          onPress={() => {
+                            if (selected) {
+                              setSelectedRow(-1);
+                            } else {
+                              setSelectedRow(index);
+                            }
+                          }}
+                        />
+                      );
+                    })}
                 </Table>
               </ScrollView>
             </View>
           )}
         </ScrollView>
       </View>
+      {isVisible && (
+          <Scanner
+            isVisible={isVisible}
+            onClose={onClose}
+            setValue={bin ? setLocation : setItemNo}
+          />
+        )}
     </Layout>
   );
 };
@@ -343,4 +430,15 @@ const styles = StyleSheet.create({
   },
   dataWrapper: { marginTop: -1 },
   row: { height: 40, backgroundColor: colors.halfWhite },
+  counter: {
+    fontFamily: "Inter-SemiBold",
+    fontSize: 16,
+    color: colors.black,
+    marginVertical: 12,
+  },
+  fieldError: {
+    fontFamily: "Inter-Regular",
+    fontSize: 12,
+    color: colors.error,
+  },
 });
